@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>World Cup 2026 — Knockouts</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --border:#30363d;
+    --live:#ff3b30; --text:#e6edf3; --muted:#8b949e; --accent:#3fb950;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:16px; background:var(--bg); color:var(--text);
+    font-family:-apple-system,Roboto,Segoe UI,sans-serif;
+    min-height:100vh;
+  }
+  h1{font-size:18px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:12px; margin-bottom:16px;}
+  .setup{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:14px; margin-bottom:16px;
+  }
+  .setup input{
+    width:100%; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:#0d1117; color:var(--text); font-size:14px; margin-top:8px;
+  }
+  .setup button{
+    margin-top:10px; width:100%; padding:10px; border:none; border-radius:8px;
+    background:var(--accent); color:#000; font-weight:600; font-size:14px;
+  }
+  .section-title{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin:18px 0 8px;}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:14px; margin-bottom:10px;
+  }
+  .live-tag{
+    display:inline-block; background:var(--live); color:#fff; font-size:11px;
+    font-weight:700; padding:2px 8px; border-radius:6px; margin-bottom:8px;
+  }
+  .teams{display:flex; justify-content:space-between; align-items:center; font-size:15px; font-weight:600;}
+  .score{font-size:20px; font-weight:800;}
+  .meta{color:var(--muted); font-size:12px; margin-top:6px;}
+  .empty{color:var(--muted); font-size:13px; text-align:center; padding:20px 0;}
+  .refresh{
+    position:fixed; bottom:16px; right:16px; background:var(--accent); color:#000;
+    border:none; border-radius:50%; width:48px; height:48px; font-size:20px;
+  }
+  .err{color:var(--live); font-size:12px; margin-top:8px;}
+  #installBtn{
+    display:none; margin-bottom:14px; width:100%; padding:12px; border:none;
+    border-radius:10px; background:var(--accent); color:#000; font-weight:700; font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🏆 World Cup 2026 — Knockouts</h1>
+<div class="sub" id="lastUpdated">Not loaded yet</div>
+
+<button id="installBtn">⬇️ Install App</button>
+
+<div class="setup" id="setupBox">
+  <div style="font-size:13px;">Paste your free football-data.org API key (get one at football-data.org → Client → Register):</div>
+  <input id="apiKeyInput" type="text" placeholder="Your API key" />
+  <button onclick="saveKeyAndLoad()">Save & Load</button>
+  <div class="err" id="errMsg"></div>
+</div>
+
+<div id="liveSection"></div>
+<div id="nextSection"></div>
+
+<button class="refresh" onclick="loadData()" title="Refresh">↻</button>
+
+<script>
+// ---- PWA install prompt ----
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'block';
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBtn').style.display = 'none';
+});
+
+// ---- Service worker registration ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(console.error);
+  });
+}
+
+// ---- App logic ----
+let apiKey = "";
+const COMPETITION = "WC"; // FIFA World Cup
+
+function saveKeyAndLoad(){
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  if(!apiKey){ return; }
+  document.getElementById('setupBox').style.display='none';
+  loadData();
+  setInterval(loadData, 60000);
+}
+
+function toIST(utcString){
+  const d = new Date(utcString);
+  return d.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    weekday:'short', day:'2-digit', month:'short',
+    hour:'2-digit', minute:'2-digit', hour12:true
+  }) + ' IST';
+}
+
+async function loadData(){
+  const err = document.getElementById('errMsg');
+  err.textContent = "";
+  try{
+    const res = await fetch(`https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`, {
+      headers: { 'X-Auth-Token': apiKey }
+    });
+    if(!res.ok){
+      throw new Error(`API error ${res.status}. Check your key or wait a minute (free tier is rate-limited).`);
+    }
+    const data = await res.json();
+    render(data.matches || []);
+    document.getElementById('lastUpdated').textContent =
+      "Updated " + new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata', hour:'2-digit', minute:'2-digit'}) + " IST";
+  }catch(e){
+    err.textContent = e.message;
+    document.getElementById('setupBox').style.display='block';
+  }
+}
+
+function render(matches){
+  const live = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
+  const upcoming = matches
+    .filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED')
+    .sort((a,b) => new Date(a.utcDate) - new Date(b.utcDate));
+
+  const liveHtml = live.length ? live.map(m => `
+    <div class="card">
+      <span class="live-tag">● LIVE ${m.minute ? m.minute+"'" : ''}</span>
+      <div class="teams">
+        <span>${m.homeTeam.shortName || m.homeTeam.name}</span>
+        <span class="score">${m.score.fullTime.home ?? 0} - ${m.score.fullTime.away ?? 0}</span>
+        <span>${m.awayTeam.shortName || m.awayTeam.name}</span>
+      </div>
+      <div class="meta">${m.stage.replace('_',' ')}</div>
+    </div>
+  `).join('') : `<div class="empty">No matches live right now</div>`;
+
+  const next = upcoming[0];
+  const nextHtml = next ? `
+    <div class="card">
+      <div class="teams">
+        <span>${next.homeTeam.shortName || next.homeTeam.name}</span>
+        <span style="font-size:13px; color:var(--muted);">vs</span>
+        <span>${next.awayTeam.shortName || next.awayTeam.name}</span>
+      </div>
+      <div class="meta">${toIST(next.utcDate)} · ${next.stage.replace('_',' ')}</div>
+      ${next.venue ? `<div class="meta">${next.venue}</div>` : ''}
+    </div>
+  ` : `<div class="empty">No upcoming knockout matches found</div>`;
+
+  document.getElementById('liveSection').innerHTML =
+    `<div class="section-title">Live Now</div>${liveHtml}`;
+  document.getElementById('nextSection').innerHTML =
+    `<div class="section-title">Next Match</div>${nextHtml}`;
+}
+</script>
+</body>
+</html>
