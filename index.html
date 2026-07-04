@@ -65,7 +65,7 @@
 <button id="installBtn">⬇️ Install App</button>
 
 <div class="setup" id="setupBox">
-  <div style="font-size:13px;">Paste your free football-data.org API key (get one at football-data.org → Client → Register):</div>
+  <div style="font-size:13px;">Paste your free football-data.org API key:</div>
   <input id="apiKeyInput" type="text" placeholder="Your API key" />
   <button onclick="saveKeyAndLoad()">Save & Load</button>
   <div class="err" id="errMsg"></div>
@@ -77,7 +77,6 @@
 <button class="refresh" onclick="loadData()" title="Refresh">↻</button>
 
 <script>
-// ---- PWA install prompt ----
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -92,16 +91,14 @@ document.getElementById('installBtn').addEventListener('click', async () => {
   document.getElementById('installBtn').style.display = 'none';
 });
 
-// ---- Service worker registration ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').catch(console.error);
   });
 }
 
-// ---- App logic ----
 let apiKey = "";
-const COMPETITION = "WC"; // FIFA World Cup
+const COMPETITION = "WC";
 
 function saveKeyAndLoad(){
   apiKey = document.getElementById('apiKeyInput').value.trim();
@@ -127,10 +124,8 @@ async function loadData(){
     const res = await fetch(`https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`, {
       headers: { 'X-Auth-Token': apiKey }
     });
-    });
-    });
     if(!res.ok){
-      throw new Error(`API error ${res.status}. Check your key or wait a minute (free tier is rate-limited).`);
+      throw new Error(`API error ${res.status}. Check your key or wait a minute.`);
     }
     const data = await res.json();
     render(data.matches || []);
@@ -152,32 +147,4 @@ function render(matches){
     <div class="card">
       <span class="live-tag">● LIVE ${m.minute ? m.minute+"'" : ''}</span>
       <div class="teams">
-        <span>${m.homeTeam.shortName || m.homeTeam.name}</span>
-        <span class="score">${m.score.fullTime.home ?? 0} - ${m.score.fullTime.away ?? 0}</span>
-        <span>${m.awayTeam.shortName || m.awayTeam.name}</span>
-      </div>
-      <div class="meta">${m.stage.replace('_',' ')}</div>
-    </div>
-  `).join('') : `<div class="empty">No matches live right now</div>`;
-
-  const next = upcoming[0];
-  const nextHtml = next ? `
-    <div class="card">
-      <div class="teams">
-        <span>${next.homeTeam.shortName || next.homeTeam.name}</span>
-        <span style="font-size:13px; color:var(--muted);">vs</span>
-        <span>${next.awayTeam.shortName || next.awayTeam.name}</span>
-      </div>
-      <div class="meta">${toIST(next.utcDate)} · ${next.stage.replace('_',' ')}</div>
-      ${next.venue ? `<div class="meta">${next.venue}</div>` : ''}
-    </div>
-  ` : `<div class="empty">No upcoming knockout matches found</div>`;
-
-  document.getElementById('liveSection').innerHTML =
-    `<div class="section-title">Live Now</div>${liveHtml}`;
-  document.getElementById('nextSection').innerHTML =
-    `<div class="section-title">Next Match</div>${nextHtml}`;
-}
-</script>
-</body>
-</html>
+        <span>${m.homeTeam.shortName ||
