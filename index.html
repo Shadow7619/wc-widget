@@ -124,9 +124,9 @@ async function loadData(){
   const err = document.getElementById('errMsg');
   err.textContent = "";
   try{
-    const targetUrl = `https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`;
-    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`, {
+    const res = await fetch(`https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`, {
       headers: { 'X-Auth-Token': apiKey }
+    });
     });
     });
     if(!res.ok){
