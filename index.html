@@ -124,8 +124,10 @@ async function loadData(){
   const err = document.getElementById('errMsg');
   err.textContent = "";
   try{
-    const res = await fetch(`https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`, {
+    const targetUrl = `https://api.football-data.org/v4/competitions/${COMPETITION}/matches?stage=LAST_16,QUARTER_FINALS,SEMI_FINALS,FINAL`;
+    const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`, {
       headers: { 'X-Auth-Token': apiKey }
+    });
     });
     if(!res.ok){
       throw new Error(`API error ${res.status}. Check your key or wait a minute (free tier is rate-limited).`);
